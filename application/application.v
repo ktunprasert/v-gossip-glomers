@@ -15,8 +15,21 @@ pub mut:
 }
 
 pub fn new() &App {
-	app := App{}
+	mut app := App{}
+	app.init()
 	return &app
+}
+
+fn (mut a App) init() {
+	a.handle('init', fn [a] (msg domain.Message) !domain.Message {
+		msg_body := msg.body.as_map()
+		(*a).node_id = msg_body['node_id']!.str()
+
+		return domain.Message.new(msg.id, a.node_id, msg.src, {
+			'type':        'init_ok'
+			'in_reply_to': msg_body['msg_id']!
+		})!
+	})
 }
 
 fn (mut a App) producer() {
