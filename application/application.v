@@ -14,8 +14,9 @@ pub mut:
 	stdin    chan string
 }
 
-pub fn new() App {
-	return App{}
+pub fn new() &App {
+	app := App{}
+	return &app
 }
 
 fn (mut a App) producer() {
