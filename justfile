@@ -1,7 +1,9 @@
-echo *FLAGS:
-    v {{FLAGS}} run echo/main.v
+echo t="false" *FLAGS:
+    v 01-echo/main.v -o v-echo
+    @if [ "{{t}}" != "true" ]; then just test_echo; \
+    else v {{FLAGS}} run 01-echo/main.v; fi
 
-test_echo:
-    # v -prod echo/main.v -o v-echo
-    v echo/main.v -o v-echo
-    maelstrom test -w echo --bin ./v-echo --node-count 1 --time-limit 10 --log-stderr
+_test test_case binary:
+    maelstrom test -w {{test_case}} --bin ./{{binary}} --node-count 1 --time-limit 10 --log-stderr
+
+test_echo: (_test "echo" "v-echo")
