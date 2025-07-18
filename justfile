@@ -1,5 +1,5 @@
-echo:
-    v run echo/main.v
+echo *FLAGS:
+    v {{FLAGS}} run echo/main.v
 
 test_echo:
     # v -prod echo/main.v -o v-echo
