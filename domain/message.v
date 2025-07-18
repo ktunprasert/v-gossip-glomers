@@ -1,4 +1,4 @@
-module lib
+module domain
 
 import x.json2
 
@@ -10,18 +10,22 @@ pub:
 	body json2.Any
 }
 
-pub fn Message.new(id u64, src string, dest string, items ...json2.Any) !Message {
+pub fn Message.new(id u64, src string, dest string, body map[string]json2.Any) !Message {
 	return Message{
 		id:   id
 		src:  src
 		dest: dest
-		body: make_body(items)!
+		body: body
 	}
+}
+
+pub fn mapify(data map[string]json2.Any) !map[string]json2.Any {
+	return data
 }
 
 pub fn make_body(items ...json2.Any) !map[string]json2.Any {
 	if items.len % 2 == 1 {
-		return error('incorrect usage you must use key pairs')
+		return error('incorrect usage you must use key-value pairs')
 	}
 
 	mut result := map[string]json2.Any{}

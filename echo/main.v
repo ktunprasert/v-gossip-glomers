@@ -1,38 +1,36 @@
 module main
 
-import os
-import x.json2
-import lib
+import application
+import domain
+
+type Msg = domain.Message
 
 fn main() {
-	mut node_id := ''
+	mut app := application.new()
+	app_ref := &app
 
-	for line := os.get_line(); line.len != 0; line = os.get_line() {
-		eprintln('Received: ${line}')
-
-		msg := json2.decode[lib.Message](line)!
+	app.handle('init', fn [app_ref] (msg Msg) !Msg {
 		msg_body := msg.body.as_map()
+		(*app_ref).node_id = msg_body['node_id']!.str()
 
-		match msg_body['type']!.str() {
-			'init' {
-				node_id = msg_body['node_id']!.str()
-				res := lib.Message.new(msg.id, node_id, msg.src, 'type', 'init_ok', 'in_reply_to',
-					msg_body['msg_id']!)!
+		return domain.Message.new(msg.id, app_ref.node_id, msg.src, {
+			'type':        'init_ok'
+			'in_reply_to': msg_body['msg_id']!
+		})!
+	})
 
-				lib.respond(json2.encode(res))
-			}
-			else {
-				mut body := msg_body.clone()
-				body['type'] = body['type']!.str() + '_ok'
-				body['in_reply_to'] = body['msg_id']!
-				resp := json2.encode(lib.Message{
-					id:   msg.id
-					src:  node_id
-					dest: msg.src
-					body: body
-				})
-				lib.respond(resp)
-			}
+	app.handle('echo', fn [app_ref] (msg Msg) !Msg {
+		mut body := msg.body.as_map().clone()
+		body['type'] = body['type']!.str() + '_ok'
+		body['in_reply_to'] = body['msg_id']!
+
+		return domain.Message{
+			id:   msg.id
+			src:  (*app_ref).node_id
+			dest: msg.src
+			body: body
 		}
-	}
+	})
+
+	app.start() or { panic(err) }
 }
