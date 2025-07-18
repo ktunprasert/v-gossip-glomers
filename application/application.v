@@ -5,7 +5,9 @@ import os
 import x.json2
 import lib
 
-type MsgHandler = fn (domain.Message) !domain.Message
+pub type Body = map[string]json2.Any
+
+type MsgHandler = fn (Body) !Body
 
 pub struct App {
 pub mut:
@@ -21,14 +23,13 @@ pub fn new() &App {
 }
 
 fn (mut a App) init() {
-	a.handle('init', fn [a] (msg domain.Message) !domain.Message {
-		msg_body := msg.body.as_map()
-		(*a).node_id = msg_body['node_id']!.str()
+	a.handle('init', fn [a] (body Body) !map[string]json2.Any {
+		(*a).node_id = body['node_id']!.str()
 
-		return domain.Message.new(msg.id, a.node_id, msg.src, {
+		return {
 			'type':        'init_ok'
-			'in_reply_to': msg_body['msg_id']!
-		})!
+			'in_reply_to': body['msg_id']!
+		}
 	})
 }
 
@@ -40,6 +41,15 @@ fn (mut a App) producer() {
 	for line := os.get_line(); line.len != 0; line = os.get_line() {
 		eprintln('Received: ${line}')
 		a.stdin <- line
+	}
+}
+
+fn (a &App) message(id u64, dest string, body Body) domain.Message {
+	return domain.Message{
+		id:   id
+		src:  (*a).node_id
+		dest: dest
+		body: body
 	}
 }
 
@@ -58,6 +68,7 @@ pub fn (mut a App) start() ! {
 		}
 
 		body := msg.body.as_map()
+		eprintln('')
 
 		type := body['type'] or {
 			eprintln("Field 'type' does not exist in payload body")
@@ -69,10 +80,12 @@ pub fn (mut a App) start() ! {
 			continue
 		}
 
-		response := a.handlers[type.str()](msg) or {
+		res_body := a.handlers[type.str()](body) or {
 			eprintln('Handler failed: ${err}')
 			continue
 		}
+
+		response := a.message(msg.id, msg.src, res_body)
 
 		lib.respond(json2.encode(response))
 	}
