@@ -11,9 +11,10 @@ type MsgHandler = fn (Body) !Body
 
 pub struct App {
 pub mut:
-	node_id  string
-	handlers map[string]MsgHandler
-	stdin    chan string
+	node_id    string
+	handlers   map[string]MsgHandler
+	stdin      chan string
+	body_hooks []fn (mut Body) !
 }
 
 pub fn new() &App {
@@ -25,12 +26,13 @@ pub fn new() &App {
 fn (mut a App) init() {
 	a.handle('init', fn [a] (body Body) !map[string]json2.Any {
 		(*a).node_id = body['node_id']!.str()
-
-		return {
-			'type':        'init_ok'
-			'in_reply_to': body['msg_id']!
-		}
+		return body
 	})
+
+	a.body_hooks << fn (mut body Body) ! {
+		body['type'] = body['type']!.str() + '_ok'
+		body['in_reply_to'] = body['msg_id']!
+	}
 }
 
 fn (mut a App) producer() {
@@ -80,9 +82,16 @@ pub fn (mut a App) start() ! {
 			continue
 		}
 
-		res_body := a.handlers[type.str()](body) or {
+		mut res_body := a.handlers[type.str()](body) or {
 			eprintln('Handler failed: ${err}')
 			continue
+		}
+
+		for fun in a.body_hooks {
+			fun(mut res_body) or {
+				eprintln('Body hook failed: ${err}')
+				continue
+			}
 		}
 
 		response := a.message(msg.id, msg.src, res_body)
