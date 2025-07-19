@@ -31,7 +31,10 @@ fn (mut a App) init() {
 
 	a.body_hooks << fn (mut body Body) ! {
 		body['type'] = body['type']!.str() + '_ok'
-		body['in_reply_to'] = body['msg_id']!
+
+		if id := body['msg_id'] {
+			body['in_reply_to'] = id.u64()
+		}
 	}
 }
 

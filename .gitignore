@@ -25,3 +25,4 @@ bin/
 store
 v-echo
 v-generate
+v-broadcast
